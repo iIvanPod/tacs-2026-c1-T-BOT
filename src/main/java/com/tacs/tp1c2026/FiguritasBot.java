@@ -1,5 +1,6 @@
 package com.tacs.tp1c2026;
 
+import com.tacs.tp1c2026.commands.CommandDispatcher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -16,10 +17,13 @@ public class FiguritasBot implements SpringLongPollingBot, LongPollingSingleThre
 
     private final String botToken;
     private final TelegramClient telegramClient;
+    private final CommandDispatcher dispatcher;
 
-    public FiguritasBot(@Value("${telegram.bot.token}") String botToken) {
+    public FiguritasBot(@Value("${telegram.bot.token}") String botToken,
+                        CommandDispatcher dispatcher) {
         this.botToken = botToken;
         this.telegramClient = new OkHttpTelegramClient(botToken);
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -34,21 +38,24 @@ public class FiguritasBot implements SpringLongPollingBot, LongPollingSingleThre
 
     @Override
     public void consume(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String texto = update.getMessage().getText();
-            long chatId = update.getMessage().getChatId();
+        if (!update.hasMessage() || !update.getMessage().hasText()) {
+            return;
+        }
+        String texto = update.getMessage().getText().trim();
+        long chatId = update.getMessage().getChatId();
+        String respuesta = dispatcher.dispatch(chatId, texto);
+        enviar(chatId, respuesta);
+    }
 
-            SendMessage respuesta = SendMessage.builder()
-                    .chatId(chatId)
-                    .text("Recibí: " + texto)
-                    .build();
-
-            try {
-                telegramClient.execute(respuesta);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
+    private void enviar(long chatId, String texto) {
+        SendMessage msg = SendMessage.builder()
+                .chatId(chatId)
+                .text(texto)
+                .build();
+        try {
+            telegramClient.execute(msg);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 }
-
