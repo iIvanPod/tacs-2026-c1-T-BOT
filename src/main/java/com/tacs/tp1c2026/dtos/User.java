@@ -1,7 +1,7 @@
 package com.tacs.tp1c2026.dtos;
 
-public record Usuario(
+public record User(
         String id,
-        String nombre,
+        String name,
         String email
 ) {}

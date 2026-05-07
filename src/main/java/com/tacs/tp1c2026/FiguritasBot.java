@@ -1,6 +1,8 @@
 package com.tacs.tp1c2026;
 
 import com.tacs.tp1c2026.commands.CommandDispatcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -14,6 +16,8 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Component
 public class FiguritasBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(FiguritasBot.class);
 
     private final String botToken;
     private final TelegramClient telegramClient;
@@ -55,7 +59,7 @@ public class FiguritasBot implements SpringLongPollingBot, LongPollingSingleThre
         try {
             telegramClient.execute(msg);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            log.error("No pude enviar mensaje a chatId {}", chatId, e);
         }
     }
 }

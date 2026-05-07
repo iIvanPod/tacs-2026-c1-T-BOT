@@ -4,11 +4,11 @@ import com.tacs.tp1c2026.chatlink.ChatLinkStore;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OlvidameCommand implements CommandHandler {
+public class LogoutCommand implements CommandHandler {
 
     private final ChatLinkStore chatLinkStore;
 
-    public OlvidameCommand(ChatLinkStore chatLinkStore) {
+    public LogoutCommand(ChatLinkStore chatLinkStore) {
         this.chatLinkStore = chatLinkStore;
     }
 

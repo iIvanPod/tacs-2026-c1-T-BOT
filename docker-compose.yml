@@ -1,0 +1,21 @@
+services:
+  bot:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      BACKEND_URL: http://backend:8080
+      CHATLINKS_FILE: /app/data/chat-links.json
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+    volumes:
+      - ./bot-data:/app/data
+    networks:
+      - tacs-network
+
+# Red creada por el compose del backend (`tp1c2026/backend/docker-compose.yml`).
+# Si el directorio o el nombre de la red cambian, actualizar `name`.
+networks:
+  tacs-network:
+    external: true
+    name: backend_tacs-network

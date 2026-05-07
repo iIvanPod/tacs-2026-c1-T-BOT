@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Bot runtime / secrets ###
+.env
+bot-data/
+chat-links.json

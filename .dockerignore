@@ -1,0 +1,15 @@
+target/
+.idea/
+.mvn/
+*.iml
+.git/
+.gitignore
+.gitattributes
+.dockerignore
+Dockerfile
+docker-compose.yml
+chat-links.json
+bot-data/
+.env
+HELP.md
+README.md

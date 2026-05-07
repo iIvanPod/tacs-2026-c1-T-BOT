@@ -1,37 +1,39 @@
 package com.tacs.tp1c2026.client;
 
-import com.tacs.tp1c2026.client.wire.FiguritaColeccionWire;
-import com.tacs.tp1c2026.client.wire.FiguritaFaltanteWire;
-import com.tacs.tp1c2026.client.wire.FiguritaWire;
-import com.tacs.tp1c2026.client.wire.UsuarioWire;
-import com.tacs.tp1c2026.dtos.Figurita;
-import com.tacs.tp1c2026.dtos.FiguritaColeccion;
-import com.tacs.tp1c2026.dtos.FiguritaFaltante;
-import com.tacs.tp1c2026.dtos.Usuario;
+import com.tacs.tp1c2026.client.wire.CardWire;
+import com.tacs.tp1c2026.client.wire.CollectionCardWire;
+import com.tacs.tp1c2026.client.wire.MissingCardWire;
+import com.tacs.tp1c2026.client.wire.UserWire;
+import com.tacs.tp1c2026.dtos.Card;
+import com.tacs.tp1c2026.dtos.CollectionCard;
+import com.tacs.tp1c2026.dtos.MissingCard;
+import com.tacs.tp1c2026.dtos.User;
 
 public final class BackendDataMapper {
 
     private BackendDataMapper() {}
 
-    public static Figurita toFigurita(FiguritaWire w) {
-        return new Figurita(
+    public static Card toCard(CardWire w) {
+        return new Card(
                 w.id(),
-                w.description(),
                 w.number(),
+                w.type(),
+                w.description(),
                 w.country(),
-                null
+                w.team(),
+                w.category()
         );
     }
 
-    public static Usuario toUsuario(UsuarioWire w) {
-        return new Usuario(w.id(), w.name(), w.email());
+    public static User toUser(UserWire w) {
+        return new User(w.id(), w.name(), w.email());
     }
 
-    public static FiguritaColeccion toFiguritaColeccion(FiguritaColeccionWire w) {
-        return new FiguritaColeccion(w.figuritaId(), w.number(), w.description(), w.quantity());
+    public static CollectionCard toCollectionCard(CollectionCardWire w) {
+        return new CollectionCard(w.cardId(), w.number(), w.description(), w.quantity());
     }
 
-    public static FiguritaFaltante toFiguritaFaltante(FiguritaFaltanteWire w) {
-        return new FiguritaFaltante(w.figuritaId(), w.number(), w.description());
+    public static MissingCard toMissingCard(MissingCardWire w) {
+        return new MissingCard(w.cardId(), w.number(), w.description());
     }
 }
