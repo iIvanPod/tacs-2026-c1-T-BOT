@@ -1,9 +1,10 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.chatlink.ChatLinkStore;
 import com.tacs.tp1c2026.client.BackendApiClient;
 import com.tacs.tp1c2026.client.BackendApiException;
 import com.tacs.tp1c2026.dtos.MissingCard;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,8 +20,8 @@ public class MissingCardsCommand extends IdentifiedCommand {
 
     private final BackendApiClient apiClient;
 
-    public MissingCardsCommand(ChatLinkStore chatLinkStore, BackendApiClient apiClient) {
-        super(chatLinkStore);
+    public MissingCardsCommand(SessionStore sessionStore, BackendApiClient apiClient) {
+        super(sessionStore);
         this.apiClient = apiClient;
     }
 
@@ -35,9 +36,9 @@ public class MissingCardsCommand extends IdentifiedCommand {
     }
 
     @Override
-    protected String executeAsUser(String userId, CommandContext ctx) {
+    protected String executeAsUser(Session session, CommandContext ctx) {
         try {
-            List<MissingCard> missing = apiClient.getMissingCards(userId);
+            List<MissingCard> missing = apiClient.getMissingCards(session.userId(), session.token());
             if (missing.isEmpty()) {
                 return "No tenés figuritas marcadas como faltantes. Marcá una con /agregarFaltante <id>.";
             }
@@ -47,6 +48,7 @@ public class MissingCardsCommand extends IdentifiedCommand {
                     .collect(Collectors.joining("\n"));
             return "Te faltan (" + missing.size() + "):\n" + items;
         } catch (BackendApiException e) {
+            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
             if (e.isExpectedClientError()) {
                 log.warn("Backend respondió {} en /faltantes: {}", e.getStatus(), e.getMessage());
                 return e.getMessage();

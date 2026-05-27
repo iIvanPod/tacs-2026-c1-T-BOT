@@ -1,9 +1,10 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.chatlink.ChatLinkStore;
 import com.tacs.tp1c2026.client.BackendApiClient;
 import com.tacs.tp1c2026.client.BackendApiException;
 import com.tacs.tp1c2026.dtos.CollectionCard;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -15,8 +16,8 @@ public class AddCardCommand extends IdentifiedCommand {
 
     private final BackendApiClient apiClient;
 
-    public AddCardCommand(ChatLinkStore chatLinkStore, BackendApiClient apiClient) {
-        super(chatLinkStore);
+    public AddCardCommand(SessionStore sessionStore, BackendApiClient apiClient) {
+        super(sessionStore);
         this.apiClient = apiClient;
     }
 
@@ -31,15 +32,16 @@ public class AddCardCommand extends IdentifiedCommand {
     }
 
     @Override
-    protected String executeAsUser(String userId, CommandContext ctx) {
+    protected String executeAsUser(Session session, CommandContext ctx) {
         if (ctx.args().isBlank()) {
             return "Falta el id. Uso: /agregar <cardId>";
         }
         String cardId = ctx.args().trim();
         try {
-            CollectionCard c = apiClient.addToCollection(userId, cardId);
+            CollectionCard c = apiClient.addToCollection(session.userId(), cardId, session.token());
             return "Listo. Tenés " + c.quantity() + " de " + c.description() + ".";
         } catch (BackendApiException e) {
+            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
             if (e.getStatus() == 404) {
                 return "No existe una figurita con id " + cardId + ".";
             }

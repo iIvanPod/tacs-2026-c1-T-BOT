@@ -1,9 +1,10 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.chatlink.ChatLinkStore;
 import com.tacs.tp1c2026.client.BackendApiClient;
 import com.tacs.tp1c2026.client.BackendApiException;
 import com.tacs.tp1c2026.dtos.CollectionCard;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,8 +20,8 @@ public class CollectionCommand extends IdentifiedCommand {
 
     private final BackendApiClient apiClient;
 
-    public CollectionCommand(ChatLinkStore chatLinkStore, BackendApiClient apiClient) {
-        super(chatLinkStore);
+    public CollectionCommand(SessionStore sessionStore, BackendApiClient apiClient) {
+        super(sessionStore);
         this.apiClient = apiClient;
     }
 
@@ -35,9 +36,9 @@ public class CollectionCommand extends IdentifiedCommand {
     }
 
     @Override
-    protected String executeAsUser(String userId, CommandContext ctx) {
+    protected String executeAsUser(Session session, CommandContext ctx) {
         try {
-            List<CollectionCard> collection = apiClient.getCollection(userId);
+            List<CollectionCard> collection = apiClient.getCollection(session.userId(), session.token());
             if (collection.isEmpty()) {
                 return "Tu colección está vacía. Agregá figuritas con /agregar <id>.";
             }
@@ -47,6 +48,7 @@ public class CollectionCommand extends IdentifiedCommand {
                     .collect(Collectors.joining("\n"));
             return "Tu colección (" + collection.size() + " figuritas):\n" + items;
         } catch (BackendApiException e) {
+            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
             if (e.isExpectedClientError()) {
                 log.warn("Backend respondió {} en /coleccion: {}", e.getStatus(), e.getMessage());
                 return e.getMessage();

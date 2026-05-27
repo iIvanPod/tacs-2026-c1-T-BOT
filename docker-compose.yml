@@ -5,7 +5,7 @@ services:
       - "8081:8081"
     environment:
       BACKEND_URL: http://backend:8080
-      CHATLINKS_FILE: /app/data/chat-links.json
+      SESSIONS_FILE: /app/data/sessions.json
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
     volumes:

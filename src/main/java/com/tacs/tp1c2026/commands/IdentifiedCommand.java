@@ -1,25 +1,31 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.chatlink.ChatLinkStore;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 
 import java.util.Optional;
 
 public abstract class IdentifiedCommand implements CommandHandler {
 
-    private final ChatLinkStore chatLinkStore;
+    private final SessionStore sessionStore;
 
-    protected IdentifiedCommand(ChatLinkStore chatLinkStore) {
-        this.chatLinkStore = chatLinkStore;
+    protected IdentifiedCommand(SessionStore sessionStore) {
+        this.sessionStore = sessionStore;
     }
 
     @Override
     public final String execute(CommandContext ctx) {
-        Optional<String> userId = chatLinkStore.getUserId(ctx.chatId());
-        if (userId.isEmpty()) {
-            return "Antes tenés que identificarte con /yosoy <userId>.";
+        Optional<Session> session = sessionStore.get(ctx.chatId());
+        if (session.isEmpty()) {
+            return "Antes tenés que identificarte con /login <email> <password>.";
         }
-        return executeAsUser(userId.get(), ctx);
+        return executeAsUser(session.get(), ctx);
     }
 
-    protected abstract String executeAsUser(String userId, CommandContext ctx);
+    protected final String onSessionExpired(long chatId) {
+        sessionStore.remove(chatId);
+        return "Tu sesión expiró. Volvé a identificarte con /login <email> <password>.";
+    }
+
+    protected abstract String executeAsUser(Session session, CommandContext ctx);
 }

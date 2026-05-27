@@ -3,11 +3,9 @@ package com.tacs.tp1c2026.client;
 import com.tacs.tp1c2026.client.wire.CardWire;
 import com.tacs.tp1c2026.client.wire.CollectionCardWire;
 import com.tacs.tp1c2026.client.wire.MissingCardWire;
-import com.tacs.tp1c2026.client.wire.UserWire;
 import com.tacs.tp1c2026.dtos.Card;
 import com.tacs.tp1c2026.dtos.CollectionCard;
 import com.tacs.tp1c2026.dtos.MissingCard;
-import com.tacs.tp1c2026.dtos.User;
 
 public final class BackendDataMapper {
 
@@ -23,10 +21,6 @@ public final class BackendDataMapper {
                 w.team(),
                 w.category()
         );
-    }
-
-    public static User toUser(UserWire w) {
-        return new User(w.id(), w.name(), w.email());
     }
 
     public static CollectionCard toCollectionCard(CollectionCardWire w) {

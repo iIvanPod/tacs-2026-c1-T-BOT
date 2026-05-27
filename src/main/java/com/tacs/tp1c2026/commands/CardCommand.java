@@ -3,18 +3,21 @@ package com.tacs.tp1c2026.commands;
 import com.tacs.tp1c2026.client.BackendApiClient;
 import com.tacs.tp1c2026.client.BackendApiException;
 import com.tacs.tp1c2026.dtos.Card;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CardCommand implements CommandHandler {
+public class CardCommand extends IdentifiedCommand {
 
     private static final Logger log = LoggerFactory.getLogger(CardCommand.class);
 
     private final BackendApiClient apiClient;
 
-    public CardCommand(BackendApiClient apiClient) {
+    public CardCommand(SessionStore sessionStore, BackendApiClient apiClient) {
+        super(sessionStore);
         this.apiClient = apiClient;
     }
 
@@ -29,15 +32,16 @@ public class CardCommand implements CommandHandler {
     }
 
     @Override
-    public String execute(CommandContext ctx) {
+    protected String executeAsUser(Session session, CommandContext ctx) {
         if (ctx.args().isBlank()) {
             return "Falta el id. Uso: /figurita <id>";
         }
         String id = ctx.args().trim();
         try {
-            Card c = apiClient.getCardById(id);
+            Card c = apiClient.getCardById(id, session.token());
             return formatear(c);
         } catch (BackendApiException e) {
+            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
             if (e.getStatus() == 404) {
                 return "No existe una figurita con id " + id + ".";
             }

@@ -25,7 +25,7 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 | `TELEGRAM_BOT_TOKEN` | _(obligatoria)_ | Token devuelto por `@BotFather` |
 | `TELEGRAM_BOT_USERNAME` | _(obligatoria)_ | Username del bot (sin `@`) |
 | `BACKEND_URL` | `http://localhost:8080` | URL base del backend; el bot le agrega `/api` automáticamente |
-| `CHATLINKS_FILE` | `./chat-links.json` | Ruta del archivo donde se persiste el mapeo `chatId → userId` |
+| `SESSIONS_FILE` | `./sessions.json` | Ruta del archivo donde se persisten las sesiones (`chatId → {userId, token}`) |
 
 Crear un archivo `.env` en la raíz del proyecto (ya está en `.gitignore`):
 
@@ -57,7 +57,7 @@ El `docker-compose.yml` del bot se conecta a la red externa del backend (`backen
    docker compose up --build -d
    ```
 
-`./bot-data/chat-links.json` se monta como volumen para que el mapeo `chatId → userId` sobreviva a reinicios.
+`./bot-data/sessions.json` se monta como volumen para que las sesiones sobrevivan a reinicios.
 
 ## Comandos disponibles
 
@@ -65,8 +65,8 @@ El `docker-compose.yml` del bot se conecta a la red externa del backend (`backen
 |---|---|
 | `/start` | Mensaje de bienvenida |
 | `/help` | Lista de comandos |
-| `/yosoy <userId>` | Asocia este chat a un usuario del backend (stub de identidad — ver más abajo) |
-| `/olvidame` | Desasocia el chat |
+| `/login <email> <password>` | Iniciá sesión con tu usuario del backend |
+| `/olvidame` | Cierra tu sesión |
 | `/catalogo [pág]` | Catálogo paginado (10 por página) |
 | `/figurita <id>` | Detalle de una figurita |
 | `/coleccion` | Mi colección |
@@ -75,15 +75,17 @@ El `docker-compose.yml` del bot se conecta a la red externa del backend (`backen
 | `/faltantes` | Mis figuritas faltantes |
 | `/agregarFaltante <cardId>` | Marca una figurita como faltante |
 
+Todos los comandos excepto `/start` y `/help` requieren sesión iniciada (los endpoints del backend exigen JWT). Si no hay sesión, el bot pide hacer `/login`.
+
 ## Estructura del proyecto
 
 ```
 src/main/java/com/tacs/tp1c2026/
-├── chatlink/        ChatLinkStore — persistencia chatId → userId (JSON local)
+├── session/         Session + SessionStore — persistencia chatId → {userId, token} (JSON local)
 ├── client/          BackendApiClient + BackendDataMapper + BackendApiException
 │   └── wire/        DTOs que matchean el JSON del backend
 ├── commands/        CommandHandler interface + CommandDispatcher + 11 handlers
-├── dtos/            DTOs de dominio del bot (Card, User, CollectionCard, MissingCard)
+├── dtos/            DTOs de dominio del bot (Card, CollectionCard, MissingCard)
 ├── BackendConfig    Bean RestClient con statusHandler global de errores
 └── FiguritasBot     Long-polling consumer
 ```
@@ -94,12 +96,15 @@ El backend devuelve un objeto `ApiError { status, error, message }` en respuesta
 
 Política de respuestas al usuario (alineada con el patrón del frontend):
 
+- **401** (token inválido o expirado): el bot limpia la sesión local y le pide al usuario hacer `/login` de nuevo. Para `/login` específicamente, 401 significa "credenciales inválidas".
 - **400 / 404 / 409** (errores esperados): se muestra el `message` del backend tal cual, salvo que el handler tenga un mensaje UX más útil para ese código (por ej. "No existe una figurita con id X" para 404).
 - **Otros 4xx y todos los 5xx**: se muestra un mensaje genérico ("No pude... Probá más tarde."). Los detalles van al log con nivel `error`.
 
 ## Identidad
 
-El comando `/yosoy <userId>` es un **stub temporal**: el bot escribe el mapeo `chatId → userId` en `chat-links.json` localmente y lo usa para los comandos que requieren usuario. Cuando se integre el flujo de autenticación real del backend (JWT — ya disponible), se reemplazará por `/login email password` con manejo de tokens.
+`/login <email> <password>` autentica contra `POST /api/auth/login` del backend y guarda `{userId, token}` por chat en `sessions.json`. El bot adjunta `Authorization: Bearer <token>` en cada request al backend y, si una respuesta vuelve 401 (token expirado o inválido), borra la sesión del chat y le pide al usuario que vuelva a entrar.
+
+El bot **no expone registro**: los usuarios se crean desde el frontend (`POST /api/auth/register`). Si el `email` no existe, `/login` devuelve "Credenciales inválidas" igual que con una contraseña incorrecta.
 
 ## Tests
 

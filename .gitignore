@@ -36,3 +36,4 @@ build/
 .env
 bot-data/
 chat-links.json
+sessions.json

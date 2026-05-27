@@ -9,6 +9,7 @@ target/
 Dockerfile
 docker-compose.yml
 chat-links.json
+sessions.json
 bot-data/
 .env
 HELP.md

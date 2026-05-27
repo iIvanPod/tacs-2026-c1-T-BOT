@@ -1,8 +1,9 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.chatlink.ChatLinkStore;
 import com.tacs.tp1c2026.client.BackendApiClient;
 import com.tacs.tp1c2026.client.BackendApiException;
+import com.tacs.tp1c2026.session.Session;
+import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -14,8 +15,8 @@ public class RemoveCardCommand extends IdentifiedCommand {
 
     private final BackendApiClient apiClient;
 
-    public RemoveCardCommand(ChatLinkStore chatLinkStore, BackendApiClient apiClient) {
-        super(chatLinkStore);
+    public RemoveCardCommand(SessionStore sessionStore, BackendApiClient apiClient) {
+        super(sessionStore);
         this.apiClient = apiClient;
     }
 
@@ -30,15 +31,16 @@ public class RemoveCardCommand extends IdentifiedCommand {
     }
 
     @Override
-    protected String executeAsUser(String userId, CommandContext ctx) {
+    protected String executeAsUser(Session session, CommandContext ctx) {
         if (ctx.args().isBlank()) {
             return "Falta el id. Uso: /quitar <cardId>";
         }
         String cardId = ctx.args().trim();
         try {
-            apiClient.decrementFromCollection(userId, cardId);
+            apiClient.decrementFromCollection(session.userId(), cardId, session.token());
             return "Listo, quité una unidad de " + cardId + ".";
         } catch (BackendApiException e) {
+            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
             if (e.isExpectedClientError()) {
                 log.warn("Backend respondió {} en /quitar: {}", e.getStatus(), e.getMessage());
                 return e.getMessage();
