@@ -23,7 +23,7 @@ public class CommandDispatcher {
 
         CommandHandler handler = handlers.get(cmd);
         if (handler == null) {
-            return "Recibí: " + texto;
+            return cmd + " no es un comando existente. Usá /help para ver los comandos disponibles.";
         }
         return handler.execute(new CommandContext(chatId, args));
     }

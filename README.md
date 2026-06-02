@@ -2,6 +2,8 @@
 
 Bot de Telegram para el TP de **TACS 2026 — UTN FRBA** (intercambio de figuritas). Hace de fachada conversacional sobre el backend del proyecto: permite al usuario consultar el catálogo, gestionar su colección y marcar figuritas faltantes desde Telegram.
 
+Soporta dos modos de uso en simultáneo: **comandos** clásicos (`/coleccion`, `/agregar`, …) y **lenguaje natural** mediante un agente de IA (Gemini) que interpreta la intención y dispara las herramientas internas (tool-calling).
+
 Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el frontend (`tacs-2026-c1-FE/`); este repositorio solo contiene el bot.
 
 ## Stack
@@ -10,6 +12,7 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 - Spring Boot 3.5.14
 - [`telegrambots-springboot-longpolling-starter`](https://github.com/rubenlagus/TelegramBots) 9.2.1
 - `RestClient` de Spring para hablar con el backend
+- [Spring AI](https://docs.spring.io/spring-ai/reference/) 1.1.7 con el modelo **Google GenAI (Gemini)** para el modo conversacional
 - Maven Wrapper (`./mvnw`)
 
 ## Prerequisitos
@@ -17,6 +20,7 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 - JDK 21 (o usar el Dockerfile, que lo trae)
 - El backend de TACS 2026 corriendo y accesible (por defecto en `http://localhost:8080`)
 - Un token de bot de Telegram. Para obtenerlo: hablar con [`@BotFather`](https://t.me/BotFather) → `/newbot` → seguir el prompt → guardar el token y el username.
+- Una API key de Gemini (Google AI Studio): https://aistudio.google.com/apikey → guardarla en `GEMINI_API_KEY`. Sin esta key el bot arranca pero el modo conversacional (texto libre) falla; los comandos `/...` siguen funcionando.
 
 ## Variables de entorno
 
@@ -26,12 +30,16 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 | `TELEGRAM_BOT_USERNAME` | _(obligatoria)_ | Username del bot (sin `@`) |
 | `BACKEND_URL` | `http://localhost:8080` | URL base del backend; el bot le agrega `/api` automáticamente |
 | `SESSIONS_FILE` | `./sessions.json` | Ruta del archivo donde se persisten las sesiones (`chatId → {userId, token}`) |
+| `GEMINI_API_KEY` | _(obligatoria para el modo conversacional)_ | API key de Google AI Studio para Gemini |
+
+El modelo de Gemini se elige en `application.properties` (`spring.ai.google.genai.chat.options.model`, por defecto `gemini-2.5-flash-lite`); se puede cambiar sin recompilar.
 
 Crear un archivo `.env` en la raíz del proyecto (ya está en `.gitignore`):
 
 ```
 TELEGRAM_BOT_TOKEN=tu_token_aca
 TELEGRAM_BOT_USERNAME=tu_bot_username
+GEMINI_API_KEY=tu_api_key_de_gemini
 ```
 
 ## Correr local
@@ -74,8 +82,33 @@ El `docker-compose.yml` del bot se conecta a la red externa del backend (`backen
 | `/quitar <cardId>` | Decrementa una figurita en mi colección |
 | `/faltantes` | Mis figuritas faltantes |
 | `/agregarFaltante <cardId>` | Marca una figurita como faltante |
+| `/quitarFaltante <cardId>` | Quita una figurita de tus faltantes |
 
 Todos los comandos excepto `/start` y `/help` requieren sesión iniciada (los endpoints del backend exigen JWT). Si no hay sesión, el bot pide hacer `/login`.
+
+## Modo conversacional (IA)
+
+Además de los comandos, el bot entiende **lenguaje natural**. `FiguritasBot` rutea cada mensaje:
+
+- empieza con `/` → va al `CommandDispatcher` (comandos de arriba, comportamiento determinístico).
+- texto libre → va al `ConversationalAgent`, que usa Gemini para interpretar la intención y disparar las **herramientas** correspondientes.
+
+Ejemplos: _"¿qué figuritas me faltan?"_, _"agregá la figurita 12 a mi colección"_, _"buscá figuritas de Argentina"_, _"¿tengo la número 5?"_.
+
+Detalles de diseño:
+
+- **Herramientas (`tools/FiguritasTools`):** una `@Tool` por operación (buscar en catálogo, ver figurita, ver/agregar/quitar colección, ver/marcar/quitar faltantes). Son las mismas operaciones que los comandos, expuestas al modelo.
+- **Sesión segura:** el token nunca es un parámetro que el modelo controle. Se inyecta fuera de banda por `ToolContext` (resuelto desde el `SessionStore` por `chatId`). `login` **no** es una herramienta: la contraseña no pasa por el modelo, se hace con `/login`.
+- **Memoria:** cada chat tiene su propia ventana de conversación (últimos 20 mensajes).
+- **Confirmación:** antes de una acción destructiva (quitar de colección o faltantes), el agente confirma con el usuario.
+- **Catálogo:** la búsqueda filtra por equipo/país/número (máx. 50 resultados) para no inflar tokens; para listar todo, el agente sugiere `/catalogo`.
+- **Errores:** un 401 durante la charla limpia la sesión y pide re-login; el resto de los errores se le devuelven al modelo para que los explique en lenguaje natural.
+
+Para ver en detalle qué herramientas dispara el agente, subir el log:
+
+```
+logging.level.org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor=DEBUG
+```
 
 ## Estructura del proyecto
 
@@ -84,10 +117,12 @@ src/main/java/com/tacs/tp1c2026/
 ├── session/         Session + SessionStore — persistencia chatId → {userId, token} (JSON local)
 ├── client/          BackendApiClient + BackendDataMapper + BackendApiException
 │   └── wire/        DTOs que matchean el JSON del backend
-├── commands/        CommandHandler interface + CommandDispatcher + 11 handlers
+├── commands/        CommandHandler interface + CommandDispatcher + 12 handlers
+├── tools/           FiguritasTools — @Tool que el agente dispara (envuelven BackendApiClient)
+├── agent/           ConversationalAgent (ChatClient + Gemini + memoria) + FiguritasToolErrorProcessor
 ├── dtos/            DTOs de dominio del bot (Card, CollectionCard, MissingCard)
 ├── BackendConfig    Bean RestClient con statusHandler global de errores
-└── FiguritasBot     Long-polling consumer
+└── FiguritasBot     Long-polling consumer; rutea comandos vs lenguaje natural
 ```
 
 ## Manejo de errores

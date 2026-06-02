@@ -104,6 +104,14 @@ public class BackendApiClient {
         return BackendDataMapper.toMissingCard(wire);
     }
 
+    public void removeMissingCard(String userId, String cardId, String token) {
+        restClient.delete()
+                .uri("/users/{id}/missing-cards/{cardId}", userId, cardId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     private static String bearer(String token) {
         return "Bearer " + token;
     }
