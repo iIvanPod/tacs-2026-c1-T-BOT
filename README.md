@@ -50,13 +50,35 @@ GEMINI_API_KEY=tu_api_key_de_gemini
 
 El bot levanta en el puerto **8081** (no 8080 — ese lo usa el backend). El long-polling se conecta solo a la API de Telegram; no hay que exponer puertos para que reciba mensajes.
 
+> ⚠️ `mvnw spring-boot:run` **no lee el `.env`** (eso lo hace Docker). Para correr local, las 3 variables tienen que estar en el entorno de la terminal. En PowerShell se pueden cargar desde el `.env`:
+> ```powershell
+> Get-Content .env | Where-Object { $_ -match '=' } | ForEach-Object {
+>     $k,$v = $_ -split '=',2; Set-Item -Path "Env:$($k.Trim())" -Value $v.Trim()
+> }
+> .\mvnw.cmd spring-boot:run
+> ```
+
 > Telegram solo permite **un** consumer por bot. Si ya tenés el bot corriendo en Docker, no lo levantes simultáneamente con IntelliJ — chocan.
 
 ## Correr con Docker
 
-El `docker-compose.yml` del bot se conecta a la red externa del backend (`backend_tacs-network`), así habla con `http://backend:8080` y comparte la misma Mongo.
+El `docker-compose.yml` del bot se conecta a la red externa del backend (`backend_tacs-network`), así habla con `http://backend:8080` y comparte la misma Mongo. El contenedor recibe `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` y `GEMINI_API_KEY` desde el `.env` del bot.
 
-1. Primero levantar el backend (desde `tp1c2026/backend/`):
+### Todo junto (recomendado)
+
+Hay dos scripts de PowerShell que levantan/bajan el stack completo (backend + Mongo + bot), corriendo cada `docker-compose.yml` en su propia carpeta —así cada uno usa **su** `.env` y los secretos del bot no se mezclan con los del backend:
+
+```powershell
+.\start-all.ps1   # levanta backend + mongo y despues el bot (con --build)
+.\stop-all.ps1    # baja el bot y despues backend + mongo (sin borrar datos)
+```
+
+> Si PowerShell bloquea el script: `powershell -ExecutionPolicy Bypass -File .\start-all.ps1`.
+> El backend **no** está en este repo; los scripts lo invocan en `../tp1c2026/backend` sin modificar nada de ahí.
+
+### Manual (paso a paso)
+
+1. Primero el backend (desde `tp1c2026/backend/`):
    ```bash
    docker compose up -d
    ```

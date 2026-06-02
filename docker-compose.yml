@@ -8,6 +8,7 @@ services:
       SESSIONS_FILE: /app/data/sessions.json
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ./bot-data:/app/data
     networks:
