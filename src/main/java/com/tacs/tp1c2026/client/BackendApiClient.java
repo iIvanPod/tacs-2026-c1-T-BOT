@@ -2,7 +2,6 @@ package com.tacs.tp1c2026.client;
 
 import com.tacs.tp1c2026.client.wire.CardWire;
 import com.tacs.tp1c2026.client.wire.CollectionCardWire;
-import com.tacs.tp1c2026.client.wire.LoginResponseWire;
 import com.tacs.tp1c2026.client.wire.MissingCardWire;
 import com.tacs.tp1c2026.dtos.Card;
 import com.tacs.tp1c2026.dtos.CollectionCard;
@@ -29,15 +28,6 @@ public class BackendApiClient {
 
     public BackendApiClient(RestClient restClient) {
         this.restClient = restClient;
-    }
-
-    public LoginResult login(String email, String password) {
-        LoginResponseWire wire = restClient.post()
-                .uri("/auth/login")
-                .body(Map.of("email", email, "password", password))
-                .retrieve()
-                .body(LoginResponseWire.class);
-        return new LoginResult(wire.token(), wire.user().id(), wire.user().name());
     }
 
     public List<Card> getCatalog(String token) {
@@ -115,6 +105,4 @@ public class BackendApiClient {
     private static String bearer(String token) {
         return "Bearer " + token;
     }
-
-    public record LoginResult(String token, String userId, String name) {}
 }

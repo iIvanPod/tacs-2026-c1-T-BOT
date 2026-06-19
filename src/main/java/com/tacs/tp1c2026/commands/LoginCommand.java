@@ -1,25 +1,23 @@
 package com.tacs.tp1c2026.commands;
 
-import com.tacs.tp1c2026.client.BackendApiClient;
-import com.tacs.tp1c2026.client.BackendApiClient.LoginResult;
-import com.tacs.tp1c2026.client.BackendApiException;
-import com.tacs.tp1c2026.session.Session;
-import com.tacs.tp1c2026.session.SessionStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
+/**
+ * Abre la Mini App de TACS con un botón web_app. El login ocurre dentro del webview
+ * (formulario del frontend), así las credenciales nunca quedan en el historial del chat.
+ */
 @Component
-public class LoginCommand implements CommandHandler {
+public class LoginCommand implements CommandHandler, InteractiveCommand {
 
-    private static final Logger log = LoggerFactory.getLogger(LoginCommand.class);
+    private final String tmaUrl;
 
-    private final BackendApiClient apiClient;
-    private final SessionStore sessionStore;
-
-    public LoginCommand(BackendApiClient apiClient, SessionStore sessionStore) {
-        this.apiClient = apiClient;
-        this.sessionStore = sessionStore;
+    public LoginCommand(@Value("${tma.url}") String tmaUrl) {
+        this.tmaUrl = tmaUrl;
     }
 
     @Override
@@ -29,34 +27,29 @@ public class LoginCommand implements CommandHandler {
 
     @Override
     public String description() {
-        return "Iniciá sesión con tu usuario del backend. Uso: /login <email> <password>";
+        return "Iniciá sesión de forma segura en la Mini App de TACS";
     }
 
     @Override
     public String execute(CommandContext ctx) {
-        String[] parts = ctx.args().split("\\s+", 2);
-        if (parts.length < 2 || parts[0].isBlank() || parts[1].isBlank()) {
-            return "Faltan datos. Uso: /login <email> <password>";
-        }
-        String email = parts[0].trim();
-        String password = parts[1];
-        try {
-            LoginResult r = apiClient.login(email, password);
-            sessionStore.save(ctx.chatId(), new Session(r.userId(), r.token()));
-            return "Listo, sesión iniciada como " + r.name() + ".";
-        } catch (BackendApiException e) {
-            if (e.getStatus() == 401) {
-                return "Credenciales inválidas.";
-            }
-            if (e.isExpectedClientError()) {
-                log.warn("Backend respondió {} en /login: {}", e.getStatus(), e.getMessage());
-                return e.getMessage();
-            }
-            log.error("Error del backend en /login", e);
-            return "No pude iniciar sesión. Probá más tarde.";
-        } catch (Exception e) {
-            log.error("Error inesperado en /login", e);
-            return "No pude iniciar sesión. Probá más tarde.";
-        }
+        return executeInteractive(ctx).text(); // fallback de texto para clientes sin web_app
+    }
+
+    @Override
+    public BotMessage executeInteractive(CommandContext ctx) {
+        InlineKeyboardRow fila = new InlineKeyboardRow();
+        fila.add(InlineKeyboardButton.builder()
+                .text("🔐 Iniciar sesión")
+                .webApp(WebAppInfo.builder().url(tmaUrl).build())
+                .build());
+
+        InlineKeyboardMarkup teclado = InlineKeyboardMarkup.builder()
+                .keyboardRow(fila)
+                .build();
+
+        return BotMessage.withKeyboard(
+                "Tocá el botón para iniciar sesión en TACS. Tus credenciales se ingresan dentro "
+                        + "de la app y no quedan registradas en el chat.",
+                teclado);
     }
 }

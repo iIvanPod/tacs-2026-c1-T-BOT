@@ -18,7 +18,7 @@ import java.util.List;
  * Cada operación autenticada toma la sesión (userId + token) desde el {@link ToolContext},
  * que Spring AI inyecta fuera de banda: el modelo nunca ve ni controla las credenciales.
  *
- * No se expone login como tool a propósito: la contraseña no debe pasar por el modelo (queda en /login).
+ * No se expone login como tool a propósito: la contraseña no debe pasar por el modelo (el login ocurre en la Mini App que abre /login).
  */
 @Component
 public class FiguritasTools {

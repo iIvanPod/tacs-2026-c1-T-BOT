@@ -2,6 +2,7 @@ package com.tacs.tp1c2026;
 
 import com.tacs.tp1c2026.agent.ConversationalAgent;
 import com.tacs.tp1c2026.client.BackendApiException;
+import com.tacs.tp1c2026.commands.BotMessage;
 import com.tacs.tp1c2026.commands.CommandDispatcher;
 import com.tacs.tp1c2026.session.NotLoggedInException;
 import com.tacs.tp1c2026.session.Session;
@@ -37,11 +38,11 @@ class FiguritasBotRoutingTest {
 
 	@Test
 	void textoConBarraVaAlDispatcher() {
-		when(dispatcher.dispatch(5L, "/coleccion")).thenReturn("tu colección");
+		when(dispatcher.dispatch(5L, "/coleccion")).thenReturn(BotMessage.text("tu colección"));
 
-		String respuesta = bot.responder(5L, "/coleccion");
+		BotMessage respuesta = bot.responder(5L, "/coleccion");
 
-		assertThat(respuesta).isEqualTo("tu colección");
+		assertThat(respuesta.text()).isEqualTo("tu colección");
 		verify(dispatcher).dispatch(5L, "/coleccion");
 		verifyNoInteractions(agent);
 	}
@@ -52,9 +53,9 @@ class FiguritasBotRoutingTest {
 		when(sessionStore.get(5L)).thenReturn(Optional.of(session));
 		when(agent.chat(5L, "¿qué me falta?", session)).thenReturn("te faltan...");
 
-		String respuesta = bot.responder(5L, "¿qué me falta?");
+		BotMessage respuesta = bot.responder(5L, "¿qué me falta?");
 
-		assertThat(respuesta).isEqualTo("te faltan...");
+		assertThat(respuesta.text()).isEqualTo("te faltan...");
 		verify(agent).chat(5L, "¿qué me falta?", session);
 		verifyNoInteractions(dispatcher);
 	}
@@ -64,9 +65,9 @@ class FiguritasBotRoutingTest {
 		when(sessionStore.get(5L)).thenReturn(Optional.empty());
 		when(agent.chat(5L, "hola", null)).thenReturn("pedí /login");
 
-		String respuesta = bot.responder(5L, "hola");
+		BotMessage respuesta = bot.responder(5L, "hola");
 
-		assertThat(respuesta).isEqualTo("pedí /login");
+		assertThat(respuesta.text()).isEqualTo("pedí /login");
 		verify(agent).chat(5L, "hola", null);
 	}
 
@@ -75,9 +76,9 @@ class FiguritasBotRoutingTest {
 		when(sessionStore.get(5L)).thenReturn(Optional.empty());
 		when(agent.chat(anyLong(), anyString(), any())).thenThrow(new RuntimeException("gemini caído"));
 
-		String respuesta = bot.responder(5L, "hola");
+		BotMessage respuesta = bot.responder(5L, "hola");
 
-		assertThat(respuesta).contains("/help");
+		assertThat(respuesta.text()).contains("/help");
 	}
 
 	@Test
@@ -86,9 +87,9 @@ class FiguritasBotRoutingTest {
 		when(agent.chat(anyLong(), anyString(), any()))
 				.thenThrow(new NotLoggedInException("sin sesión"));
 
-		String respuesta = bot.responder(5L, "mostrame mi colección");
+		BotMessage respuesta = bot.responder(5L, "mostrame mi colección");
 
-		assertThat(respuesta).contains("/login");
+		assertThat(respuesta.text()).contains("/login");
 	}
 
 	@Test
@@ -97,10 +98,10 @@ class FiguritasBotRoutingTest {
 		when(agent.chat(anyLong(), anyString(), any()))
 				.thenThrow(new BackendApiException(401, "unauthorized", "token vencido"));
 
-		String respuesta = bot.responder(5L, "mi colección");
+		BotMessage respuesta = bot.responder(5L, "mi colección");
 
 		verify(sessionStore).remove(5L);
-		assertThat(respuesta).contains("/login");
+		assertThat(respuesta.text()).contains("/login");
 	}
 
 	@Test
@@ -109,8 +110,8 @@ class FiguritasBotRoutingTest {
 		when(agent.chat(anyLong(), anyString(), any()))
 				.thenThrow(new BackendApiException(500, "error", "boom"));
 
-		String respuesta = bot.responder(5L, "mi colección");
+		BotMessage respuesta = bot.responder(5L, "mi colección");
 
-		assertThat(respuesta).contains("/help");
+		assertThat(respuesta.text()).contains("/help");
 	}
 }

@@ -28,6 +28,6 @@ public class LogoutCommand implements CommandHandler {
             return "No tenías una sesión activa.";
         }
         sessionStore.remove(ctx.chatId());
-        return "Listo, cerré tu sesión. Volvé a entrar con /login <email> <password>.";
+        return "Listo, cerré tu sesión. Volvé a entrar con /login.";
     }
 }

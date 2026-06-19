@@ -39,7 +39,7 @@ public class ConversationalAgent {
 			Reglas:
 			1. Antes de ejecutar una acción destructiva (quitar una figurita de la colección o de los faltantes),
 			   confirmá explícitamente con el usuario y esperá que diga que sí antes de usar la herramienta.
-			2. Si una herramienta indica que el usuario no inició sesión, pedile que use /login <email> <password>.
+			2. Si una herramienta indica que el usuario no inició sesión, pedile que use /login para iniciar sesión en la app.
 			3. Si no te queda clara la intención o falta el id de una figurita, pedí una aclaración corta.
 			4. Para buscar en el catálogo usá la herramienta con un filtro (equipo, país o número). Si te piden
 			   el catálogo completo, sugerí el comando /catalogo en vez de listar todo.

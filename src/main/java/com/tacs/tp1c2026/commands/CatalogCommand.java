@@ -8,17 +8,23 @@ import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class CatalogCommand extends IdentifiedCommand {
+public class CatalogCommand extends IdentifiedCommand implements InteractiveCommand {
 
     private static final Logger log = LoggerFactory.getLogger(CatalogCommand.class);
 
     private static final int PAGE_SIZE = 10;
+
+    /** Prefijo del callback de los botones de paginación: {@code catalogo:<página>}. */
+    static final String CALLBACK_PREFIX = "catalogo:";
 
     private final BackendApiClient apiClient;
 
@@ -39,26 +45,37 @@ public class CatalogCommand extends IdentifiedCommand {
 
     @Override
     protected String executeAsUser(Session session, CommandContext ctx) {
+        return render(session, ctx.chatId(), ctx.args()).text();
+    }
+
+    @Override
+    public BotMessage executeInteractive(CommandContext ctx) {
+        return sessionOf(ctx.chatId())
+                .map(session -> render(session, ctx.chatId(), ctx.args()))
+                .orElseGet(() -> BotMessage.text(NOT_IDENTIFIED));
+    }
+
+    private BotMessage render(Session session, long chatId, String args) {
         int page;
         try {
-            page = parsePage(ctx.args());
+            page = parsePage(args);
         } catch (NumberFormatException e) {
-            return "Página inválida. Uso: /catalogo [número de página]";
+            return BotMessage.text("Página inválida. Uso: /catalogo [número de página]");
         }
         if (page < 1) {
-            return "La página tiene que ser un número mayor o igual a 1.";
+            return BotMessage.text("La página tiene que ser un número mayor o igual a 1.");
         }
 
         try {
             List<Card> catalog = apiClient.getCatalog(session.token());
             if (catalog.isEmpty()) {
-                return "El catálogo está vacío.";
+                return BotMessage.text("El catálogo está vacío.");
             }
             int total = catalog.size();
             int totalPages = (total + PAGE_SIZE - 1) / PAGE_SIZE;
             if (page > totalPages) {
-                return "No hay página " + page + ". El catálogo tiene "
-                        + total + " figuritas (" + totalPages + " páginas).";
+                return BotMessage.text("No hay página " + page + ". El catálogo tiene "
+                        + total + " figuritas (" + totalPages + " páginas).");
             }
             int from = (page - 1) * PAGE_SIZE;
             String items = catalog.stream()
@@ -67,26 +84,45 @@ public class CatalogCommand extends IdentifiedCommand {
                     .limit(PAGE_SIZE)
                     .map(c -> c.number() + ". " + c.description() + " (" + c.id() + ")")
                     .collect(Collectors.joining("\n"));
-            StringBuilder out = new StringBuilder();
-            out.append("Catálogo — página ").append(page).append("/").append(totalPages)
-               .append(" (").append(total).append(" figuritas):\n")
-               .append(items);
-            if (page < totalPages) {
-                out.append("\n\nSiguiente: /catalogo ").append(page + 1);
+            String text = "Catálogo — página " + page + "/" + totalPages
+                    + " (" + total + " figuritas):\n" + items;
+            if (totalPages == 1) {
+                return BotMessage.text(text);
             }
-            return out.toString();
+            return BotMessage.withKeyboard(text, pageKeyboard(page, totalPages));
         } catch (BackendApiException e) {
-            if (e.getStatus() == 401) return onSessionExpired(ctx.chatId());
+            if (e.getStatus() == 401) return BotMessage.text(onSessionExpired(chatId));
             if (e.isExpectedClientError()) {
                 log.warn("Backend respondió {} en /catalogo: {}", e.getStatus(), e.getMessage());
-                return e.getMessage();
+                return BotMessage.text(e.getMessage());
             }
             log.error("Error del backend en /catalogo", e);
-            return "No pude obtener el catálogo. Probá más tarde.";
+            return BotMessage.text("No pude obtener el catálogo. Probá más tarde.");
         } catch (Exception e) {
             log.error("Error inesperado en /catalogo", e);
-            return "No pude obtener el catálogo. Probá más tarde.";
+            return BotMessage.text("No pude obtener el catálogo. Probá más tarde.");
         }
+    }
+
+    /**
+     * Teclado de paginación: ◀️ a la izquierda y ▶️ a la derecha. Sólo se incluye la flecha
+     * disponible (no hay anterior en la primera página ni siguiente en la última).
+     */
+    private static InlineKeyboardMarkup pageKeyboard(int page, int totalPages) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        if (page > 1) {
+            row.add(InlineKeyboardButton.builder()
+                    .text("◀️")
+                    .callbackData(CALLBACK_PREFIX + (page - 1))
+                    .build());
+        }
+        if (page < totalPages) {
+            row.add(InlineKeyboardButton.builder()
+                    .text("▶️")
+                    .callbackData(CALLBACK_PREFIX + (page + 1))
+                    .build());
+        }
+        return InlineKeyboardMarkup.builder().keyboardRow(row).build();
     }
 
     private static int parsePage(String args) {
