@@ -1,9 +1,11 @@
 package com.tacs.tp1c2026.tools;
 
 import com.tacs.tp1c2026.client.BackendApiClient;
+import com.tacs.tp1c2026.dtos.Auction;
 import com.tacs.tp1c2026.dtos.Card;
 import com.tacs.tp1c2026.dtos.CollectionCard;
 import com.tacs.tp1c2026.dtos.MissingCard;
+import com.tacs.tp1c2026.dtos.TradePublication;
 import com.tacs.tp1c2026.session.NotLoggedInException;
 import com.tacs.tp1c2026.session.Session;
 import org.springframework.ai.chat.model.ToolContext;
@@ -104,6 +106,28 @@ public class FiguritasTools {
         Session session = requireSession(toolContext);
         apiClient.removeMissingCard(session.userId(), figuritaId, session.token());
         return "Se quitó la figurita " + figuritaId + " de la lista de faltantes.";
+    }
+
+    @Tool(description = "Crea una publicación de intercambio de una figurita repetida (por id), indicando cuántas unidades ofrecés. "
+            + "Es una acción que crea algo: confirmá con el usuario antes de ejecutarla. Devuelve la publicación creada.")
+    public TradePublication publicarFiguritaRepetida(
+            @ToolParam(description = "Id de la figurita repetida a publicar") String cardId,
+            @ToolParam(description = "Cantidad de unidades repetidas a publicar") Integer cantidad,
+            ToolContext toolContext) {
+        Session session = requireSession(toolContext);
+        return apiClient.createTradePublication(cardId, cantidad, session.token());
+    }
+
+    @Tool(description = "Lista las publicaciones de intercambio activas de OTROS usuarios (no las propias).")
+    public List<TradePublication> verPublicaciones(ToolContext toolContext) {
+        Session session = requireSession(toolContext);
+        return apiClient.listPublications(1, 20, session.token()).items();
+    }
+
+    @Tool(description = "Lista las subastas activas de OTROS usuarios (no las propias).")
+    public List<Auction> verSubastas(ToolContext toolContext) {
+        Session session = requireSession(toolContext);
+        return apiClient.listAuctions(1, 20, session.token()).items();
     }
 
     private static boolean contiene(String valor, String filtro) {

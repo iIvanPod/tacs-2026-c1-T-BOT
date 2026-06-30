@@ -1,11 +1,20 @@
 package com.tacs.tp1c2026.client;
 
+import com.tacs.tp1c2026.client.wire.ApiResponseWire;
+import com.tacs.tp1c2026.client.wire.AuctionWire;
 import com.tacs.tp1c2026.client.wire.CardWire;
 import com.tacs.tp1c2026.client.wire.CollectionCardWire;
 import com.tacs.tp1c2026.client.wire.MissingCardWire;
+import com.tacs.tp1c2026.client.wire.NotificationWire;
+import com.tacs.tp1c2026.client.wire.PaginationWire;
+import com.tacs.tp1c2026.client.wire.TradePublicationWire;
+import com.tacs.tp1c2026.dtos.Auction;
 import com.tacs.tp1c2026.dtos.Card;
 import com.tacs.tp1c2026.dtos.CollectionCard;
 import com.tacs.tp1c2026.dtos.MissingCard;
+import com.tacs.tp1c2026.dtos.Notification;
+import com.tacs.tp1c2026.dtos.Page;
+import com.tacs.tp1c2026.dtos.TradePublication;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -13,6 +22,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 @Component
 public class BackendApiClient {
@@ -22,6 +32,14 @@ public class BackendApiClient {
     private static final ParameterizedTypeReference<List<CollectionCardWire>> COLLECTION_LIST =
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<MissingCardWire>> MISSING_LIST =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ApiResponseWire<TradePublicationWire>> PUBLICATION_RESPONSE =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<PaginationWire<TradePublicationWire>> PUBLICATION_PAGE =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<PaginationWire<AuctionWire>> AUCTION_PAGE =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<PaginationWire<NotificationWire>> NOTIFICATION_PAGE =
             new ParameterizedTypeReference<>() {};
 
     private final RestClient restClient;
@@ -100,6 +118,58 @@ public class BackendApiClient {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    public TradePublication createTradePublication(String cardId, int quantity, String token) {
+        ApiResponseWire<TradePublicationWire> wire = restClient.post()
+                .uri("/publications")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .body(Map.of("cardId", cardId, "quantity", quantity))
+                .retrieve()
+                .body(PUBLICATION_RESPONSE);
+        return BackendDataMapper.toTradePublication(wire.data());
+    }
+
+    public Page<TradePublication> listPublications(int page, int perPage, String token) {
+        PaginationWire<TradePublicationWire> wire = restClient.get()
+                .uri("/publications?page={page}&per_page={perPage}", page, perPage)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .retrieve()
+                .body(PUBLICATION_PAGE);
+        return toPage(wire, BackendDataMapper::toTradePublication);
+    }
+
+    public Page<Auction> listAuctions(int page, int perPage, String token) {
+        PaginationWire<AuctionWire> wire = restClient.get()
+                .uri("/auctions?page={page}&per_page={perPage}", page, perPage)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .retrieve()
+                .body(AUCTION_PAGE);
+        return toPage(wire, BackendDataMapper::toAuction);
+    }
+
+    public List<Notification> getUnreadNotifications(String userId, String token) {
+        PaginationWire<NotificationWire> wire = restClient.get()
+                .uri("/users/{id}/notifications?status=UNREAD&page=1&per_page=50", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .retrieve()
+                .body(NOTIFICATION_PAGE);
+        return wire.data().stream().map(BackendDataMapper::toNotification).toList();
+    }
+
+    public void markNotificationRead(String userId, String notificationId, String token) {
+        restClient.put()
+                .uri("/users/{id}/notifications/{notificationId}/read", userId, notificationId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private static <W, D> Page<D> toPage(PaginationWire<W> wire, Function<W, D> mapper) {
+        List<D> items = wire.data().stream().map(mapper).toList();
+        int currentPage = wire.currentPage() != null ? wire.currentPage() : 1;
+        int totalPages = wire.totalPages() != null ? wire.totalPages() : 1;
+        return new Page<>(items, currentPage, totalPages);
     }
 
     private static String bearer(String token) {

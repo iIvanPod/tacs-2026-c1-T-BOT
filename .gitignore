@@ -37,3 +37,4 @@ build/
 bot-data/
 chat-links.json
 sessions.json
+*.out.log

@@ -50,6 +50,11 @@ public class SessionStore {
         return Optional.ofNullable(sessions.get(chatId));
     }
 
+    /** Copia del mapa de sesiones, para iterar sin riesgo de modificación concurrente. */
+    public Map<Long, Session> all() {
+        return new HashMap<>(sessions);
+    }
+
     public void save(long chatId, Session session) {
         sessions.put(chatId, session);
         persist();

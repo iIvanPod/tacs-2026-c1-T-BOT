@@ -128,6 +128,9 @@ El bot recibe los updates por webhook, así que en la nube alcanza con exponer s
 | `/faltantes` | Mis figuritas faltantes |
 | `/agregarFaltante <cardId>` | Marca una figurita como faltante |
 | `/quitarFaltante <cardId>` | Quita una figurita de tus faltantes |
+| `/publicar <cardId> <cantidad>` | Publica una figurita repetida para intercambio |
+| `/publicaciones [pág]` | Publicaciones de intercambio activas (paginado) |
+| `/subastas [pág]` | Subastas activas (paginado) |
 
 Todos los comandos excepto `/start` y `/help` requieren sesión iniciada (los endpoints del backend exigen JWT). Si no hay sesión, el bot pide hacer `/login`.
 

@@ -37,8 +37,9 @@ public class ConversationalAgent {
 			DISTINTAS: para la colección usá verColeccion y para los faltantes verFaltantes; no las confundas.
 
 			Reglas:
-			1. Antes de ejecutar una acción destructiva (quitar una figurita de la colección o de los faltantes),
-			   confirmá explícitamente con el usuario y esperá que diga que sí antes de usar la herramienta.
+			1. Antes de ejecutar una acción destructiva (quitar una figurita de la colección o de los faltantes)
+			   o que crea algo (publicar una figurita repetida para intercambio), confirmá explícitamente con el
+			   usuario y esperá que diga que sí antes de usar la herramienta.
 			2. Si una herramienta indica que el usuario no inició sesión, pedile que use /login para iniciar sesión en la app.
 			3. Si no te queda clara la intención o falta el id de una figurita, pedí una aclaración corta.
 			4. Para buscar en el catálogo usá la herramienta con un filtro (equipo, país o número). Si te piden
