@@ -48,8 +48,7 @@ public class LoginCommand implements CommandHandler, InteractiveCommand {
                 .build();
 
         return BotMessage.withKeyboard(
-                "Tocá el botón para iniciar sesión en TACS. Tus credenciales se ingresan dentro "
-                        + "de la app y no quedan registradas en el chat.",
+                "Tocá el botón para iniciar sesión en TACS bot.",
                 teclado);
     }
 }
