@@ -10,7 +10,7 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 
 - Java 21
 - Spring Boot 3.5.14
-- [`telegrambots-springboot-longpolling-starter`](https://github.com/rubenlagus/TelegramBots) 9.2.1
+- [`telegrambots-client`](https://github.com/rubenlagus/TelegramBots) 9.2.1 (recepción de updates por **webhook**, con un `@RestController` propio)
 - `RestClient` de Spring para hablar con el backend
 - [Spring AI](https://docs.spring.io/spring-ai/reference/) 1.1.7 con el modelo **Google GenAI (Gemini)** para el modo conversacional
 - Maven Wrapper (`./mvnw`)
@@ -31,6 +31,9 @@ Forma parte del workspace TACS 2026 C1 junto al backend (`tp1c2026/`) y el front
 | `BACKEND_URL` | `http://localhost:8080` | URL base del backend; el bot le agrega `/api` automáticamente |
 | `SESSIONS_FILE` | `./sessions.json` | Ruta del archivo donde se persisten las sesiones (`chatId → {userId, token}`) |
 | `GEMINI_API_KEY` | _(obligatoria para el modo conversacional)_ | API key de Google AI Studio para Gemini |
+| `WEBHOOK_URL` | _(vacío)_ | URL pública HTTPS por la que Telegram alcanza al bot. Si está vacía, el bot arranca pero **no recibe mensajes**. En Render se toma solo de `RENDER_EXTERNAL_URL`. |
+| `WEBHOOK_SECRET` | _(vacío)_ | Secret token que Telegram reenvía en el header `X-Telegram-Bot-Api-Secret-Token` (solo `A-Z a-z 0-9 _ -`). Si está vacío el endpoint `/webhook` **no se autentica** (cualquiera podría postear updates falsos): en producción es **obligatorio**. |
+| `PORT` | `8081` | Puerto HTTP. En la nube lo inyecta la plataforma (Render usa `PORT`). |
 
 El modelo de Gemini se elige en `application.properties` (`spring.ai.google.genai.chat.options.model`, por defecto `gemini-2.5-flash-lite`); se puede cambiar sin recompilar.
 
@@ -48,7 +51,16 @@ GEMINI_API_KEY=tu_api_key_de_gemini
 ./mvnw spring-boot:run
 ```
 
-El bot levanta en el puerto **8081** (no 8080 — ese lo usa el backend). El long-polling se conecta solo a la API de Telegram; no hay que exponer puertos para que reciba mensajes.
+El bot levanta en el puerto **8081** (no 8080 — ese lo usa el backend). Como recibe los updates por **webhook**, Telegram necesita una **URL pública HTTPS** para alcanzarlo; en local eso se logra con un túnel:
+
+```bash
+# en otra terminal, exponé el 8081 (ejemplo con ngrok)
+ngrok http 8081
+# tomá la URL https que te da y arrancá el bot con:
+#   WEBHOOK_URL=https://xxxx.ngrok-free.app  (y opcional WEBHOOK_SECRET)
+```
+
+Si arrancás **sin** `WEBHOOK_URL`, el bot levanta igual pero no registra el webhook (no recibe mensajes) — útil para correr tests o tocar código sin túnel.
 
 > ⚠️ `mvnw spring-boot:run` **no lee el `.env`** (eso lo hace Docker). Para correr local, las 3 variables tienen que estar en el entorno de la terminal. En PowerShell se pueden cargar desde el `.env`:
 > ```powershell
@@ -58,7 +70,7 @@ El bot levanta en el puerto **8081** (no 8080 — ese lo usa el backend). El lon
 > .\mvnw.cmd spring-boot:run
 > ```
 
-> Telegram solo permite **un** consumer por bot. Si ya tenés el bot corriendo en Docker, no lo levantes simultáneamente con IntelliJ — chocan.
+> Telegram guarda **un solo** webhook por bot: el último `setWebhook` gana. Si levantás dos instancias (p. ej. local + la de la nube), la última en arrancar se queda con los mensajes. Para devolverle el webhook a la nube, reiniciá esa instancia (o corré `deleteWebhook` desde la API de Telegram).
 
 ## Correr con Docker
 
@@ -88,6 +100,17 @@ Hay dos scripts de PowerShell que levantan/bajan el stack completo (backend + Mo
    ```
 
 `./bot-data/sessions.json` se monta como volumen para que las sesiones sobrevivan a reinicios.
+
+## Deploy en la nube (Render)
+
+El bot recibe los updates por webhook, así que en la nube alcanza con exponer su puerto HTTP; no hay proceso de polling.
+
+1. En Render: **New → Blueprint** apuntando a este repo (hay un `render.yaml` listo) — o **New → Web Service** con runtime Docker.
+2. Render inyecta `PORT` (el bot escucha ahí) y `RENDER_EXTERNAL_URL` (la URL pública del servicio). El bot arma el webhook como `RENDER_EXTERNAL_URL` + `/webhook` automáticamente: **no hace falta setear `WEBHOOK_URL`**.
+3. Cargá en el dashboard las variables `sync:false`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY` y **`WEBHOOK_SECRET`** (solo `A-Z a-z 0-9 _ -`; obligatorio en prod para que el endpoint no quede abierto).
+4. Al arrancar, el log debe decir `Webhook registrado en https://<servicio>.onrender.com/webhook`. Si no, revisá que el token sea válido y que la URL sea HTTPS.
+
+> En el plan free el servicio se duerme tras un rato sin tráfico; el primer mensaje lo despierta y puede demorar unos segundos (mismo comportamiento que el backend).
 
 ## Comandos disponibles
 
@@ -143,8 +166,10 @@ src/main/java/com/tacs/tp1c2026/
 ├── tools/           FiguritasTools — @Tool que el agente dispara (envuelven BackendApiClient)
 ├── agent/           ConversationalAgent (ChatClient + Gemini + memoria) + FiguritasToolErrorProcessor
 ├── dtos/            DTOs de dominio del bot (Card, CollectionCard, MissingCard)
+├── webhook/         TelegramWebhookController (recibe updates) + WebhookRegistrar (setWebhook al arrancar)
 ├── BackendConfig    Bean RestClient con statusHandler global de errores
-└── FiguritasBot     Long-polling consumer; rutea comandos vs lenguaje natural
+├── TelegramConfig   Bean TelegramClient (envío) + executor single-thread para procesar updates
+└── FiguritasBot     Rutea cada update: comandos vs lenguaje natural; envía/edita mensajes
 ```
 
 ## Manejo de errores

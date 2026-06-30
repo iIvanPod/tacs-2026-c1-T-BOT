@@ -29,6 +29,9 @@
 	<properties>
 		<java.version>21</java.version>
 		<spring-ai.version>1.1.7</spring-ai.version>
+		<!-- Override de la versión que maneja spring-boot-starter-parent: la trae transitiva
+		     telegrambots-meta (3.17.0) y tiene CVE-2025-48924; 3.18.0 lo corrige. -->
+		<commons-lang3.version>3.18.0</commons-lang3.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -36,11 +39,9 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<dependency>
-			<groupId>org.telegram</groupId>
-			<artifactId>telegrambots-springboot-longpolling-starter</artifactId>
-			<version>9.2.1</version>
-		</dependency>
+		<!-- Cliente de la API de Telegram. La recepción de updates es por webhook
+		     (un @RestController propio sobre el Tomcat de spring-boot-starter-web),
+		     así que no se usa el starter de long-polling. -->
 		<dependency>
 			<groupId>org.telegram</groupId>
 			<artifactId>telegrambots-client</artifactId>

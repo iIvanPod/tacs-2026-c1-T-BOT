@@ -9,6 +9,7 @@ import com.tacs.tp1c2026.session.Session;
 import com.tacs.tp1c2026.session.SessionStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.Optional;
 
@@ -33,7 +34,7 @@ class FiguritasBotRoutingTest {
 		dispatcher = mock(CommandDispatcher.class);
 		agent = mock(ConversationalAgent.class);
 		sessionStore = mock(SessionStore.class);
-		bot = new FiguritasBot("dummy-token", dispatcher, agent, sessionStore);
+		bot = new FiguritasBot(mock(TelegramClient.class), dispatcher, agent, sessionStore);
 	}
 
 	@Test

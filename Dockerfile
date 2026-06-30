@@ -23,6 +23,8 @@ USER spring:spring
 
 COPY --from=build /app/target/*.jar app.jar
 
+# Puerto local (informativo). En la nube la plataforma inyecta $PORT y la app lo respeta
+# (server.port=${PORT:8081}); Render escanea el puerto abierto en runtime, no este EXPOSE.
 EXPOSE 8081
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

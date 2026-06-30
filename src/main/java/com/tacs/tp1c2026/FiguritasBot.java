@@ -9,12 +9,7 @@ import com.tacs.tp1c2026.session.Session;
 import com.tacs.tp1c2026.session.SessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
-import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
-import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
-import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -26,38 +21,25 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Component
-public class FiguritasBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+public class FiguritasBot {
 
     private static final Logger log = LoggerFactory.getLogger(FiguritasBot.class);
 
-    private final String botToken;
     private final TelegramClient telegramClient;
     private final CommandDispatcher dispatcher;
     private final ConversationalAgent agent;
     private final SessionStore sessionStore;
 
-    public FiguritasBot(@Value("${telegram.bot.token}") String botToken,
+    public FiguritasBot(TelegramClient telegramClient,
                         CommandDispatcher dispatcher,
                         ConversationalAgent agent,
                         SessionStore sessionStore) {
-        this.botToken = botToken;
-        this.telegramClient = new OkHttpTelegramClient(botToken);
+        this.telegramClient = telegramClient;
         this.dispatcher = dispatcher;
         this.agent = agent;
         this.sessionStore = sessionStore;
     }
 
-    @Override
-    public String getBotToken() {
-        return botToken;
-    }
-
-    @Override
-    public LongPollingUpdateConsumer getUpdatesConsumer() {
-        return this;
-    }
-
-    @Override
     public void consume(Update update) {
         if (update.hasCallbackQuery()) {
             handleCallback(update.getCallbackQuery());

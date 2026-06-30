@@ -1,0 +1,22 @@
+# Render Blueprint del bot (web service Docker que recibe el webhook de Telegram).
+# Deploy: en Render → New → Blueprint → apuntar a este repo/branch.
+# Render inyecta PORT (el bot escucha ahí) y RENDER_EXTERNAL_URL (de donde sale la URL del webhook),
+# así que WEBHOOK_URL no hace falta setearla a mano.
+services:
+  - type: web
+    name: tacs-bot-2026
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: BACKEND_URL
+        value: https://tacs-backend-2026.onrender.com
+      # Secret del webhook: poné un valor [A-Za-z0-9_-] en el dashboard (sync:false = no versionado).
+      - key: WEBHOOK_SECRET
+        sync: false

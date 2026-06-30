@@ -9,6 +9,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # URL pública por la que Telegram alcanza este contenedor (en local, la del túnel).
+      # Si queda vacía, el bot levanta pero no registra webhook (no recibe mensajes).
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
     volumes:
       - ./bot-data:/app/data
     networks:
